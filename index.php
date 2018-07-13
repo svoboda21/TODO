@@ -19,7 +19,8 @@
     {
         die("Error: ".$e->getMessage());
     }
-    $result = $db->query("SELECT * FROM `tasks` ")
+    $result = $db->query("SELECT * FROM `tasks` ");
+
 ?>
   <style>
     table {
@@ -64,74 +65,76 @@
     </tr>
     <tr>
 <?php
+    if (!empty($_GET["action"])) {
+        if ($_GET["action"] == "delete"){
+            $idget=$_GET['id'];
+            $result1 =$db->prepare("DELETE FROM `tasks` WHERE id=?");
+            $result1->execute([$idget]);
+            $result = $db->query("SELECT * FROM `tasks` ");
+        }
+        if ($_GET["action"] == "done"){
+            $idget=$_GET['id'];
+            $res3 = $db->prepare("UPDATE tasks SET is_done = 1 WHERE id=?");
+            $res3->execute([$idget]);
+            $result = $db->query("SELECT * FROM `tasks` ");
+        }
+        if ($_GET['action'] == 'rew'){?>
+            <div style="float: left">
+                <form method="POST">
+                    <input type="text" name="desc" placeholder="Описание задачи" value=""/>
+                    <input type="submit" name="rew" value="Изменить"/>
+                </form>
+            </div>
+<?php
+        }
+    }
     if (!empty($_GET["save"])&&!empty($_GET["description"])) {
-        $a = $_GET["description"];
+        $desc = $_GET["description"];
         $id = $db->lastInsertId();
         $today = date("Y-m-d H:i:s");
-        $res1 = $db->exec("INSERT INTO `tasks` (`id`, `description`, `is_done`, `date_added`)
-         VALUES ('$id', '$a', '0', '$today')");
-        $result = $db->query("SELECT * FROM `tasks` ");
+        $res1 = $db->prepare("INSERT INTO `tasks` (`id`, `description`, `is_done`, `date_added`)
+          VALUES (:id, :desc, '0', :today)");
+        $res1->bindParam(':id', $id);
+        $res1->bindParam(':desc', $desc);
+        $res1->bindParam(':today', $today);
+        $res1->execute();
+        header("Location: index.php");
+    }
+    if (!empty($_POST["desc"])&&!empty($_POST["rew"])) {
+        $idget=$_GET['id'];
+        $desc = $_POST["desc"];
+        $res2 = $db->prepare("UPDATE tasks SET description = :description WHERE id=:id");
+        $res2->execute(['description'=>$desc,'id'=>$idget]);
+        header("Location: index.php");
     }
     if (!empty($_POST["sort_by"])&&!empty($_POST["sort"])) {
         if ($_POST["sort_by"]== 'is_done') {
             $result = $db->query("SELECT description,date_added,is_done FROM `tasks` ORDER BY `is_done` DESC");
         }
-    }
-    if (!empty($_POST["sort_by"])&&!empty($_POST["sort"])) {
         if ($_POST["sort_by"]== 'date_created') {
             $result = $db->query("SELECT description,`date_added`,is_done FROM `tasks` ORDER BY `date_added` DESC");
         }
-    }
-    if (!empty($_POST["sort_by"])&&!empty($_POST["sort"])) {
         if ($_POST["sort_by"]== 'description') {
             $result = $db->query("SELECT description,`date_added`,is_done FROM `tasks` ORDER BY `description` DESC");
         }
     }
-    if (!empty($_GET["action"])) {
-        if ($_GET["action"] == "delete"){
-            $result1 = $db->query("DELETE FROM `tasks` WHERE id=1");
-            $result = $db->query("SELECT * FROM `tasks` ");
-        }
-    }
-    if (!empty($_GET["action"])) {
-        if ($_GET["action"] == "done"){
-            $res3 = $db->exec("UPDATE tasks SET is_done = 1");
-            $result = $db->query("SELECT * FROM `tasks` ");
-        }
-    }
-    if (!empty($_GET['action'])) {
-        if ($_GET['action'] == 'rew'){?>
-        <div style="float: left">
-            <form method="POST">
-                <input type="text" name="desc" placeholder="Описание задачи" value=""/>
-                <input type="submit" name="rew" value="Изменить"/>
-            </form>
-        </div>
-        <?php
-        }
-    if (!empty($_POST["desc"])&&!empty($_POST["rew"])) {
-        $a = $_POST["desc"];
-        $res2 = $db->exec("UPDATE tasks SET description = '$a'");
-        $result = $db->query("SELECT * FROM `tasks` ");
-    }
-        }
     while($row = $result->fetch()){
 ?>
-    <tr>
-        <td style="width:6px valign=" center
-        " align="center"><?php echo $row['description']; ?> </td>
-        <td style="width:400px valign=" center
-        " align="center"><?php echo $row['date_added']; ?></td>
-        <td style="width:180px valign=" center
-        " align="center"><?php echo ($row['is_done'] == 0) ? 'Не выполнено' : 'Выполнено'; ?></td>
-        <td style="width:50px valign=" center
-        " align="center">
-        <a href='index.php?action=rew'>Изменить</a>
-        <a href='index.php?action=done'>Выполнить</a>
-        <a href='index.php?action=delete'>Удалить</a>
-        </td>
-    </tr>
-<?php
-    }
+      <tr>
+          <td style="width:6px valign=" center
+          " align="center"><?php echo $row['description']; ?> </td>
+          <td style="width:400px valign=" center
+          " align="center"><?php echo $row['date_added']; ?></td>
+          <td style="width:180px valign=" center
+          " align="center"><?php echo ($row['is_done'] == 0) ? 'Не выполнено' : 'Выполнено'; ?></td>
+          <td style="width:50px valign=" center
+          " align="center">
+          <a href='index.php?id=<?php echo $row['id'] ?>&action=rew'>Изменить</a>
+          <a href='index.php?id=<?php echo $row['id'] ?>&action=done'>Выполнить</a>
+          <a href='index.php?id=<?php echo $row['id'] ?>&action=delete'>Удалить</a>
+          </td>
+      </tr>
+      <?php
+          }
 ?>
   </table>
